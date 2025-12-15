@@ -1,0 +1,26 @@
+{
+  "name": "pkgviz",
+  "version": "1.0.0",
+  "description": "Java package dependency visualizer using Cytoscape.js",
+  "main": "src/cli.js",
+  "bin": {
+    "pkgviz": "./src/cli.js"
+  },
+  "scripts": {
+    "start": "node src/cli.js"
+  },
+  "keywords": [
+    "java",
+    "package",
+    "dependency",
+    "visualization",
+    "cytoscape"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "commander": "^12.1.0",
+    "express": "^4.21.0",
+    "glob": "^10.4.5",
+    "open": "^10.1.0"
+  }
+}

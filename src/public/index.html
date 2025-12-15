@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Java Package Dependencies</title>
+  <script src="https://unpkg.com/cytoscape@3.28.1/dist/cytoscape.min.js"></script>
+  <script src="https://unpkg.com/dagre@0.8.5/dist/dagre.min.js"></script>
+  <script src="https://unpkg.com/cytoscape-dagre@2.5.0/cytoscape-dagre.js"></script>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div id="app">
+    <header>
+      <h1>Java Package Dependencies</h1>
+      <div id="controls">
+        <label for="layout-select">Layout:</label>
+        <select id="layout-select">
+          <option value="dagre">Hierarchical (Dagre)</option>
+          <option value="cose">Force-Directed (COSE)</option>
+          <option value="breadthfirst">Breadth-First</option>
+          <option value="circle">Circle</option>
+          <option value="grid">Grid</option>
+        </select>
+        <button id="fit-btn">Fit to Screen</button>
+        <button id="export-btn">Export PNG</button>
+      </div>
+      <div id="stats"></div>
+    </header>
+    <div id="main-container">
+      <div id="cy"></div>
+      <div id="info-panel">
+        <h3>Package Details</h3>
+        <div id="package-info">Click a package to see details</div>
+      </div>
+    </div>
+  </div>
+  <script src="js/main.js"></script>
+  <script src="js/controls.js"></script>
+</body>
+</html>
