@@ -1,5 +1,5 @@
 {
-  "name": "pkgviz",
+  "name": "jpdviz",
   "version": "1.0.0",
   "description": "Java package dependency visualizer using Cytoscape.js",
   "main": "src/cli.js",
