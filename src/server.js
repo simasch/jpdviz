@@ -10,7 +10,19 @@ function startServer(graphData, options = {}) {
 
   // API endpoint for graph data
   app.get('/api/graph', (req, res) => {
-    res.json(graphData);
+    res.json({
+      nodes: graphData.nodes,
+      edges: graphData.edges
+    });
+  });
+
+  // API endpoint for cycle detection results
+  app.get('/api/cycles', (req, res) => {
+    res.json({
+      count: graphData.cycles ? graphData.cycles.length : 0,
+      cycles: graphData.cycles || [],
+      cycleInfo: graphData.cycleInfo || []
+    });
   });
 
   // API endpoint for graph statistics
@@ -18,6 +30,7 @@ function startServer(graphData, options = {}) {
     res.json({
       nodeCount: graphData.nodes.length,
       edgeCount: graphData.edges.length,
+      cycleCount: graphData.cycles ? graphData.cycles.length : 0,
       packages: graphData.nodes.map(n => n.data.fullName).sort()
     });
   });

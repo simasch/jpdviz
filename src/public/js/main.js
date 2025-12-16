@@ -1,9 +1,15 @@
 let cy;
+let cycleData = null;
+const collapsedNodes = new Set();
 
 async function initGraph() {
   // Fetch graph data from server
   const response = await fetch('/api/graph');
   const graphData = await response.json();
+
+  // Fetch cycle data
+  const cycleResponse = await fetch('/api/cycles');
+  cycleData = await cycleResponse.json();
 
   // Initialize Cytoscape
   cy = cytoscape({
@@ -97,6 +103,73 @@ async function initGraph() {
           'width': 3,
           'opacity': 1
         }
+      },
+      // Nodes in a cycle
+      {
+        selector: 'node[?inCycle]',
+        style: {
+          'border-color': '#ff4444',
+          'border-width': 4
+        }
+      },
+      // Edges in a cycle
+      {
+        selector: 'edge[?inCycle]',
+        style: {
+          'line-color': '#ff6b6b',
+          'target-arrow-color': '#ff6b6b',
+          'line-style': 'dashed'
+        }
+      },
+      // Cycle highlighted state
+      {
+        selector: '.cycle-highlighted',
+        style: {
+          'opacity': 1
+        }
+      },
+      // Parent (compound) nodes
+      {
+        selector: 'node[?isParent]',
+        style: {
+          'background-color': '#2d3748',
+          'background-opacity': 0.7,
+          'border-color': '#4a5568',
+          'border-width': 2,
+          'text-valign': 'top',
+          'text-halign': 'center',
+          'font-size': '10px',
+          'color': '#a0aec0',
+          'padding': '20px',
+          'shape': 'roundrectangle',
+          'text-margin-y': -5
+        }
+      },
+      // Collapsed parent nodes
+      {
+        selector: 'node[?isParent].collapsed',
+        style: {
+          'background-color': '#4a5568',
+          'border-color': '#718096',
+          'text-valign': 'center',
+          'padding': '10px'
+        }
+      },
+      // Parent nodes with children in a cycle
+      {
+        selector: 'node[?hasChildInCycle]',
+        style: {
+          'border-color': '#ff8800',
+          'border-width': 3,
+          'border-style': 'dashed'
+        }
+      },
+      // Hidden elements (collapsed children)
+      {
+        selector: '.hidden',
+        style: {
+          'display': 'none'
+        }
       }
     ],
 
@@ -131,6 +204,18 @@ async function initGraph() {
     }
   });
 
+  // Double-tap on parent nodes to collapse/expand
+  cy.on('doubleTap', 'node[?isParent]', function(evt) {
+    const node = evt.target;
+    const nodeId = node.data('id');
+
+    if (collapsedNodes.has(nodeId)) {
+      expandNode(node);
+    } else {
+      collapseNode(node);
+    }
+  });
+
   // Update stats
   updateStats(graphData);
 }
@@ -145,10 +230,23 @@ function showPackageInfo(node) {
 
   let infoHtml = `
     <p><strong>Package:</strong><br>${data.fullName}</p>
-    <p><strong>Files:</strong> ${data.fileCount}</p>
-    <p><strong>Dependencies:</strong> ${outgoing.length}</p>
-    <p><strong>Dependents:</strong> ${incoming.length}</p>
+    <p><strong>Files:</strong> ${data.fileCount || 0}</p>
   `;
+
+  // Show hierarchy info for parent nodes
+  if (data.isParent) {
+    const childCount = data.childCount || 0;
+    infoHtml += `
+      <p><strong>Type:</strong> Group</p>
+      <p><strong>Children:</strong> ${childCount}</p>
+      <p class="hint">Double-click to ${collapsedNodes.has(data.id) ? 'expand' : 'collapse'}</p>
+    `;
+  } else {
+    infoHtml += `
+      <p><strong>Dependencies:</strong> ${outgoing.length}</p>
+      <p><strong>Dependents:</strong> ${incoming.length}</p>
+    `;
+  }
 
   if (dependsOn.length > 0) {
     infoHtml += `
@@ -162,6 +260,20 @@ function showPackageInfo(node) {
       <h4>Used by:</h4>
       <ul>${usedBy.map(name => `<li>${name}</li>`).join('')}</ul>
     `;
+  }
+
+  // Show cycle information if this node is in a cycle
+  if (data.inCycle && cycleData && cycleData.cycleInfo) {
+    const cycleInfo = cycleData.cycleInfo.find(c => c.index === data.cycleIndex);
+    if (cycleInfo) {
+      infoHtml += `
+        <h4 class="cycle-warning">Circular Dependency</h4>
+        <p>Part of a cycle with ${cycleInfo.size} packages:</p>
+        <ul class="cycle-list">
+          ${cycleInfo.packages.map(pkg => `<li>${pkg}</li>`).join('')}
+        </ul>
+      `;
+    }
   }
 
   document.getElementById('package-info').innerHTML = infoHtml;
@@ -209,8 +321,90 @@ function clearPackageInfo() {
 }
 
 function updateStats(graphData) {
-  document.getElementById('stats').innerHTML =
-    `${graphData.nodes.length} packages | ${graphData.edges.length} dependencies`;
+  let statsHtml = `${graphData.nodes.length} packages | ${graphData.edges.length} dependencies`;
+  if (cycleData && cycleData.count > 0) {
+    statsHtml += ` | <span class="cycle-warning">${cycleData.count} cycle${cycleData.count > 1 ? 's' : ''}</span>`;
+  }
+  document.getElementById('stats').innerHTML = statsHtml;
+}
+
+// Collapse a parent node (hide its children)
+function collapseNode(parentNode) {
+  const nodeId = parentNode.data('id');
+
+  // Find all descendant nodes (children, grandchildren, etc.)
+  const descendants = cy.nodes().filter(n => {
+    let current = n.data('parent');
+    while (current) {
+      if (current === nodeId) return true;
+      const parentNodeObj = cy.getElementById(current);
+      if (parentNodeObj.length === 0) break;
+      current = parentNodeObj.data('parent');
+    }
+    return false;
+  });
+
+  // Hide descendants and their connected edges
+  descendants.addClass('hidden');
+  descendants.connectedEdges().addClass('hidden');
+
+  // Mark as collapsed
+  parentNode.addClass('collapsed');
+  collapsedNodes.add(nodeId);
+}
+
+// Expand a parent node (show its children)
+function expandNode(parentNode) {
+  const nodeId = parentNode.data('id');
+
+  // Find immediate children only
+  const children = cy.nodes().filter(n => n.data('parent') === nodeId);
+
+  // Show children (but not their children if they're collapsed)
+  children.forEach(child => {
+    const childId = child.data('id');
+    if (!collapsedNodes.has(childId)) {
+      child.removeClass('hidden');
+    } else {
+      // Still show the collapsed parent itself
+      child.removeClass('hidden');
+    }
+  });
+
+  // Show edges between visible nodes
+  cy.edges().forEach(edge => {
+    const source = edge.source();
+    const target = edge.target();
+    if (!source.hasClass('hidden') && !target.hasClass('hidden')) {
+      edge.removeClass('hidden');
+    }
+  });
+
+  // Mark as expanded
+  parentNode.removeClass('collapsed');
+  collapsedNodes.delete(nodeId);
+}
+
+// Expand all parent nodes
+function expandAll() {
+  cy.nodes('[?isParent]').forEach(node => {
+    if (collapsedNodes.has(node.data('id'))) {
+      expandNode(node);
+    }
+  });
+}
+
+// Collapse all parent nodes (from deepest to shallowest)
+function collapseAll() {
+  const parents = cy.nodes('[?isParent]').sort((a, b) =>
+    (b.data('depth') || 0) - (a.data('depth') || 0)
+  );
+
+  parents.forEach(node => {
+    if (!collapsedNodes.has(node.data('id'))) {
+      collapseNode(node);
+    }
+  });
 }
 
 // Initialize on page load

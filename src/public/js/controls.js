@@ -23,6 +23,48 @@ document.addEventListener('DOMContentLoaded', () => {
     link.download = 'package-dependencies.png';
     link.click();
   });
+
+  // Show Cycles toggle button
+  let cyclesHighlighted = false;
+  document.getElementById('show-cycles-btn').addEventListener('click', () => {
+    const btn = document.getElementById('show-cycles-btn');
+
+    if (!cycleData || cycleData.count === 0) {
+      alert('No circular dependencies detected in this project.');
+      return;
+    }
+
+    cyclesHighlighted = !cyclesHighlighted;
+
+    if (cyclesHighlighted) {
+      btn.textContent = 'Hide Cycles';
+      btn.classList.add('active');
+      // Fade non-cycle elements and highlight cycle elements
+      cy.nodes('[!inCycle]').addClass('faded');
+      cy.edges('[!inCycle]').addClass('faded');
+      cy.nodes('[?inCycle]').addClass('cycle-highlighted');
+      cy.edges('[?inCycle]').addClass('cycle-highlighted');
+    } else {
+      btn.textContent = 'Show Cycles';
+      btn.classList.remove('active');
+      // Clear all highlights
+      cy.elements().removeClass('faded cycle-highlighted');
+    }
+  });
+
+  // Expand All button
+  document.getElementById('expand-all-btn').addEventListener('click', () => {
+    if (typeof expandAll === 'function') {
+      expandAll();
+    }
+  });
+
+  // Collapse All button
+  document.getElementById('collapse-all-btn').addEventListener('click', () => {
+    if (typeof collapseAll === 'function') {
+      collapseAll();
+    }
+  });
 });
 
 function getLayoutOptions(name) {

@@ -172,3 +172,38 @@ header h1 {
     border-top: 1px solid #0f3460;
   }
 }
+
+/* Cycle warning styles */
+.cycle-warning {
+  color: #ff4444;
+  font-weight: 600;
+}
+
+#package-info h4.cycle-warning {
+  color: #ff4444;
+  border-bottom: 1px solid #ff4444;
+  padding-bottom: 4px;
+}
+
+.cycle-list li {
+  color: #ff6b6b;
+}
+
+/* Active button state */
+#controls button.active {
+  background: #ff4444;
+  border-color: #ff4444;
+}
+
+#controls button.active:hover {
+  background: #cc3333;
+  border-color: #cc3333;
+}
+
+/* Hint text in info panel */
+.hint {
+  font-size: 0.75rem;
+  color: #718096;
+  font-style: italic;
+  margin-top: 8px;
+}

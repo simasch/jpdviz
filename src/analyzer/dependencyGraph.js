@@ -1,5 +1,7 @@
+const { buildHierarchy, aggregateFileCounts } = require('./hierarchyBuilder');
+
 function buildDependencyGraph(parsedFiles, options = {}) {
-  const { exclude = [] } = options;
+  const { exclude = [], hierarchy = false, hierarchyOptions = {} } = options;
 
   // Collect all unique packages in the project
   const projectPackages = new Set(
@@ -68,8 +70,16 @@ function buildDependencyGraph(parsedFiles, options = {}) {
     }
   }
 
+  let resultNodes = Array.from(nodes.values());
+
+  // Apply hierarchy if requested
+  if (hierarchy) {
+    resultNodes = buildHierarchy(resultNodes, hierarchyOptions);
+    resultNodes = aggregateFileCounts(resultNodes);
+  }
+
   return {
-    nodes: Array.from(nodes.values()),
+    nodes: resultNodes,
     edges: Array.from(edges.values())
   };
 }
